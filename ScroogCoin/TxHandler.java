@@ -27,25 +27,27 @@ public class TxHandler {
     	
         byte[] hash = tx.getHash();
         double outputTotal=0, inputTotal=0;
-
-        //(1)
-        for(int i =0; i < tx.numInputs(); i++)
-            if(! utxoPool.contains(new UTXO(hash,i)))
-                return false;
-
-        //(2)
+        ArrayList<UTXO> utList = new ArrayList<UTXO>();
+        
         for(int i =0; i < tx.numInputs(); i++)
         {
         	UTXO temp = new UTXO(tx.getInput(i).prevTxHash, tx.getInput(i).outputIndex);
         	
+        	//(1)
+            if(! utxoPool.contains(temp))
+                return false;
+            //(2)
             if(! Crypto.verifySignature(utxoPool.getTxOutput(temp).address ,temp.getTxHash(), tx.getInput(i).signature))
                 return false;
+            //(3)
+            if(utList.contains(temp))
+            	return false;
+            utList.add(temp);
+            
+            //(5)
+            inputTotal += tx.getOutput(i).value;
         }
-        
-        //(3)
-        for(UTXO u: utxoPool.getAllUTXO())
-        	if(u.getTxHash().equals(tx.getHash()))
-        		return false;
+
         //(4)
         for(int i =0; i < tx.numOutputs(); i++)
         {
@@ -54,10 +56,7 @@ public class TxHandler {
         		return false;
         	outputTotal += temp;
         }
-        //(5)
-        for(int i =0; i < tx.numOutputs(); i++)
-        	inputTotal += tx.getOutput(i).value;
-        
+
         if(outputTotal > inputTotal)
         	return false;
         
